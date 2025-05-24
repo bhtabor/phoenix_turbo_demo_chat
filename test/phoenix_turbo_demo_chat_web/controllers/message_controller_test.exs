@@ -2,6 +2,7 @@ defmodule PhoenixTurboDemoChatWeb.MessageControllerTest do
   use PhoenixTurboDemoChatWeb.ConnCase
 
   import PhoenixTurboDemoChat.ChatFixtures
+  alias Phoenix.Socket.Broadcast
 
   @create_attrs %{content: "some content"}
   @invalid_attrs %{content: nil}
@@ -36,6 +37,17 @@ defmodule PhoenixTurboDemoChatWeb.MessageControllerTest do
 
       assert turbo_stream_response(conn, 422) =~ "can&#39;t be blank"
     end
+
+    test "broadcasts messages to room", %{conn: conn, room: room} do
+      topic = subscribe_room_turbo_stream(room.id)
+
+      conn
+      |> put_req_header("x-turbo-request-id", "turbo-request-id")
+      |> post(~p"/rooms/#{room}/messages", message: @create_attrs)
+
+      assert_receive %Broadcast{event: "message", topic: ^topic, payload: %{data: stream}}
+      assert stream =~ "<turbo-stream action=\"refresh\" request-id=\"turbo-request-id\">"
+    end
   end
 
   describe "delete message" do
@@ -44,6 +56,17 @@ defmodule PhoenixTurboDemoChatWeb.MessageControllerTest do
     test "deletes chosen message", %{conn: conn, message: message} do
       conn = delete(conn, ~p"/messages/#{message}")
       assert redirected_to(conn, 303) == ~p"/rooms/#{message.room_id}"
+    end
+
+    test "broadcasts messages to room", %{conn: conn, message: message} do
+      topic = subscribe_room_turbo_stream(message.room_id)
+
+      conn
+      |> put_req_header("x-turbo-request-id", "turbo-request-id")
+      |> delete(~p"/messages/#{message}")
+
+      assert_receive %Broadcast{event: "message", topic: ^topic, payload: %{data: stream}}
+      assert stream =~ "<turbo-stream action=\"refresh\" request-id=\"turbo-request-id\">"
     end
   end
 
@@ -58,5 +81,12 @@ defmodule PhoenixTurboDemoChatWeb.MessageControllerTest do
     room = room_fixture()
 
     %{room: room}
+  end
+
+  defp subscribe_room_turbo_stream(room_id) do
+    topic = "turbo_stream:room:#{room_id}"
+    PhoenixTurboDemoChatWeb.Endpoint.subscribe(topic)
+
+    topic
   end
 end
