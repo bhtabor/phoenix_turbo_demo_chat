@@ -21,6 +21,7 @@ defmodule PhoenixTurboDemoChatWeb.Layouts do
       </Layout.app>
       
   """
+  attr :phx_request_id, :string, default: nil
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
   attr :current_scope, :map,
@@ -64,7 +65,7 @@ defmodule PhoenixTurboDemoChatWeb.Layouts do
       </div>
     </main>
 
-    <.flash_group flash={@flash} />
+    <.flash_group phx_request_id={@phx_request_id} flash={@flash} />
     """
   end
 
@@ -75,14 +76,15 @@ defmodule PhoenixTurboDemoChatWeb.Layouts do
 
       <.flash_group flash={@flash} />
   """
+  attr :phx_request_id, :string, default: nil
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:error} flash={@flash} />
+    <div id={@id} aria-live="polite" class="flex flex-col-reverse toast toast-top toast-end z-50">
+      <.flash id={"flash-#{@phx_request_id}-info"} kind={:info} flash={@flash} data-turbo-permanent />
+      <.flash id={"flash-#{@phx_request_id}-error"} kind={:error} flash={@flash} data-turbo-permanent />
 
       <.flash
         id="client-error"
